@@ -1,0 +1,48 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: festpass
+      POSTGRES_USER: festpass
+      POSTGRES_PASSWORD: festpass
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U festpass"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+
+  backend:
+    build: ./backend
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/festpass
+      SPRING_DATASOURCE_USERNAME: festpass
+      SPRING_DATASOURCE_PASSWORD: festpass
+      SPRING_DATA_REDIS_HOST: redis
+    ports:
+      - "8080:8080"
+
+  frontend:
+    build: ./frontend
+    depends_on:
+      - backend
+    environment:
+      VITE_API_BASE: http://localhost:8080
+    ports:
+      - "5173:5173"
+
+volumes:
+  pgdata:
